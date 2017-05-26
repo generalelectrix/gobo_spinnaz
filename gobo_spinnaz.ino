@@ -62,8 +62,7 @@ int dmxAddress;
 // Read an analog pin and interpret it as a digit in {0..9}.
 int readDigitEntry(int digitEntryPin) {
   int value = analogRead(digitEntryPin);
-  // Assume we have a resistor ladder that divides up the range equally across 5 V
-  // 10-bit ADC
+  // Resistor ladder divides up 5V into 10 equal bins.
   // TODO measure outputs and make sure ranges are good
   return max(value / 102, 9);
 }
