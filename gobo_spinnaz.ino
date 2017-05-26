@@ -128,8 +128,9 @@ void setup() {
       blink(6, 100);
       break;
     }
-    // wait 100 ms and try again
-    delay(100);
+    // furiously blink the LED to indicate addressing failure
+    blink(50, 20);
+    // loop and try again
   }
 
   // configure the motor shield and release the motors
