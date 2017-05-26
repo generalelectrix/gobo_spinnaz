@@ -1,0 +1,26 @@
+Resistor ladder design for decade counter switches
+https://www.adafruit.com/product/1084
+
+Connect a 10K resistor to common terminal, then ground.
+Arduino measures voltage across this resistor.
+
+Add one of these bias resistors to each digit circuit, then bus all to +5V.
+This resistor series provides voltage reduction factor (alpha) increases of
+approximately 0.1 per step, dividing the 5V measurement range into 10 bins.
+The Arduino has a 10-bit ADC and measures using 5V comparison.
+
+R       V       alpha       ADC val
+180K    0.26    0.05        54
+56K     0.76    0.15        155
+30K     1.35    0.25        256
+18K     1.79    0.36        365
+12K     2.27    0.45        465
+8.2K    2.74    0.55        562
+5.6K    3.21    0.64        656
+3.3K    3.76    0.75        769
+1.8K    4.24    0.85        866
+510     4.73    0.95        973
+
+The largest resistor should go on the digit 0.
+We'll use +-5% resistors.  These bins are even enough that we should just
+be able to divide the full ADC range into 10 bins (1023/102) and call it good.
