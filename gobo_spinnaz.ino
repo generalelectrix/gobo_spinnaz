@@ -43,21 +43,6 @@
 // may change this to an external LED at some point
 #define LED_PIN LED_BUILTIN
 
-// DMX slave receiver
-DMX_Slave dmxSlave(DMX_CHANNEL_COUNT);
-
-// Read an analog pin and interpret it as a digit in {0..9}.
-int readDigitEntry(int digitEntryPin) {
-  int value = analogRead(digitEntryPin);
-  // Assume we have a resistor ladder that divides up the range equally across 5 V
-  // 10-bit ADC
-  // TODO measure outputs and make sure ranges are good
-  return max(value / 102, 9);
-}
-
-// setting this to -1 runs in standalone
-int dmxAddress;
-
 // Blink the LED on and off several times with some duration of flash.
 void blink(int times, int duration) {
   for (int i = 0; i < times; i++) {
@@ -68,6 +53,30 @@ void blink(int times, int duration) {
   }
 }
 
+// DMX slave receiver
+DMX_Slave dmxSlave(DMX_CHANNEL_COUNT);
+
+// setting this to -1 runs in standalone
+int dmxAddress;
+
+// Read an analog pin and interpret it as a digit in {0..9}.
+int readDigitEntry(int digitEntryPin) {
+  int value = analogRead(digitEntryPin);
+  // Assume we have a resistor ladder that divides up the range equally across 5 V
+  // 10-bit ADC
+  // TODO measure outputs and make sure ranges are good
+  return max(value / 102, 9);
+}
+
+// Correspondence between digit on {0..9} and motor speed for standalone.
+uint8_t standaloneValues[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
+
+// Get an 8-bit speed from reading a thumbwheel.
+uint8_t speedFromDigit(int pin) {
+  return standaloneValues[readDigitEntry(pin)];
+}
+
+// stored state of each motor
 MotorState motor0State = MotorState {FORWARD, 0};
 MotorState motor1State = MotorState {FORWARD, 0};
 MotorState motor2State = MotorState {FORWARD, 0};
@@ -82,31 +91,45 @@ Adafruit_DCMotor *motor1 = motorShield.getMotor(2);
 Adafruit_DCMotor *motor2 = motorShield.getMotor(3);
 Adafruit_DCMotor *motor3 = motorShield.getMotor(4);
 
+// Use a MotorState to set the state of a motor.
+void pushMotorState(Adafruit_DCMotor* motor, MotorState motorState) {
+  motor->setSpeed(motorState.speed);
+  motor->run(motorState.direction);
+}
+
+// Push state to all of the motors.
+void pushMotorStates() {
+  pushMotorState(motor0, motor0State);
+  pushMotorState(motor1, motor1State);
+  pushMotorState(motor2, motor2State);
+  pushMotorState(motor3, motor3State);
+}
+
 void setup() {
 
   pinMode(LED_PIN, OUTPUT);
 
   // configure as DMX or standalone
   while (true) {
-      int select0Digit = readDigitEntry(A0);
-      if (select0Digit > 0) {
-        // running in standalone mode, set address to -1
-        dmxAddress = -1;
-        // blink the LED 3 times slowly
-        blink(3, 200);
-        break;
-      }
-      // not standalone, check if we have a valid DMX address
-      int readAddress = readDigitEntry(A1)*100 + readDigitEntry(A2)*10 + readDigitEntry(A3);
-      if (readAddress > 0 && readAddress < 512) {
-        // valid address, set it and move on
-        dmxAddress = readAddress;
-        // blink the LED 6 times quickly
-        blink(6, 100);
-        break;
-      }
-      // wait 100 ms and try again
-      delay(100);
+    int select0Digit = readDigitEntry(A0);
+    if (select0Digit > 0) {
+      // running in standalone mode, set address to -1
+      dmxAddress = -1;
+      // blink the LED 3 times slowly
+      blink(3, 200);
+      break;
+    }
+    // not standalone, check if we have a valid DMX address
+    int readAddress = readDigitEntry(A1)*100 + readDigitEntry(A2)*10 + readDigitEntry(A3);
+    if (readAddress > 0 && readAddress < 512) {
+      // valid address, set it and move on
+      dmxAddress = readAddress;
+      // blink the LED 6 times quickly
+      blink(6, 100);
+      break;
+    }
+    // wait 100 ms and try again
+    delay(100);
   }
 
   // configure the motor shield and release the motors
@@ -129,26 +152,6 @@ void setup() {
     dmxSlave.onReceiveComplete(handleDmxFrame);
   }
   
-}
-
-// Get an 8-bit speed from reading a thumbwheel.
-uint8_t speedFromDigit(int pin) {
-  // 9*28 = 252, max value
-  return readDigitEntry(pin) * 28;
-}
-
-// Use a MotorState to set the state of a motor.
-void pushMotorState(Adafruit_DCMotor* motor, MotorState motorState) {
-  motor->setSpeed(motorState.speed);
-  motor->run(motorState.direction);
-}
-
-// Push state to all of the motors.
-void pushMotorStates() {
-  pushMotorState(motor0, motor0State);
-  pushMotorState(motor1, motor1State);
-  pushMotorState(motor2, motor2State);
-  pushMotorState(motor3, motor3State);
 }
 
 void loop() {
