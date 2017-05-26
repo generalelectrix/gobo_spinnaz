@@ -116,7 +116,7 @@ void setup() {
       // running in standalone mode, set address to -1
       dmxAddress = -1;
       // blink the LED 3 times slowly
-      blink(3, 200);
+      blink(3, 500);
       break;
     }
     // not standalone, check if we have a valid DMX address
@@ -125,7 +125,7 @@ void setup() {
       // valid address, set it and move on
       dmxAddress = readAddress;
       // blink the LED 6 times quickly
-      blink(6, 100);
+      blink(6, 250);
       break;
     }
     // furiously blink the LED to indicate addressing failure
