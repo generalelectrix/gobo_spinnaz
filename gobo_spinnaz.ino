@@ -59,6 +59,38 @@ DMX_Slave dmxSlave(DMX_CHANNEL_COUNT);
 // setting this to -1 runs in standalone
 int dmxAddress;
 
+// keep track of when we last got a DMX frame
+// we'll blink the LED if we have good DMX coming in
+// we'll stop blinking the LED if we haven't seen DMX in 1 second
+unsigned long lastFrameReceivedTime = 0UL;
+const unsigned long dmxTimeout = 1000UL;
+
+// We'll service the LED state to blink if we're getting good DMX.
+bool ledOn = false;
+unsigned long lastLedTransition = 0UL;
+// Nice slow blinking for good DMX.
+const int blinkDuration = 500;
+
+// Make the LED blink if we have good DMX.
+void serviceLedState() {
+    unsigned long now = millis();
+    // If we haven't seen a frame in a while, shut LED off.
+    if (lastFrameReceivedTime + dmxTimeout < now) {
+        digitalWrite(LED_PIN, LOW);
+    }
+    // Otherwise, possibly execute a state transition if it's been
+    // a while since the last one.
+    else if (lastLedTransition + blinkDuration < now) {
+        if (ledOn) {
+            digitalWrite(LED_PIN, LOW);
+        }
+        else {
+            digitalWrite(LED_PIN, HIGH);
+        }
+        ledOn = !ledOn;
+    }
+}
+
 // Read an analog pin and interpret it as a digit in {0..9}.
 int readDigitEntry(int digitEntryPin) {
     int value = analogRead(digitEntryPin);
@@ -158,14 +190,18 @@ void setup() {
 
 void loop() {
     // If we're in standalone mode, read the control values.
+    // DMX mode sets the motor states in an interrupt.
     if (dmxAddress == -1) {
         motor0State.speed = speedFromDigit(A0);
         motor1State.speed = speedFromDigit(A1);
         motor2State.speed = speedFromDigit(A2);
         motor3State.speed = speedFromDigit(A3);
     }
-    // DMX mode sets the motor states in an interrupt.
-
+    else {
+        // Running in DMX mode, blink the LED if we have good signal.
+        serviceLedState();
+    }
+    
     // Render the motor states to the motor controller.
     pushMotorStates();
 
@@ -188,17 +224,17 @@ void setMotorStateFromDmx(int channelOffset, MotorState* motorState) {
 
 // Interrupt handler for when the DMX interface has read a frame.
 void handleDmxFrame(unsigned short channelsReceived) {
+    // Possible we didn't receive all of the channels, such as a truncated DMX universe.
+    // Only update state if we got all of them.
     if (channelsReceived == DMX_CHANNEL_COUNT) {
-        // All channels have been received, update the stored motor state.
+        // Update the stored motor state.
         setMotorStateFromDmx(0, &motor0State);
         setMotorStateFromDmx(1, &motor1State);
         setMotorStateFromDmx(2, &motor2State);
         setMotorStateFromDmx(3, &motor3State);
-    }
-    else {
-        // We have received a frame but not all channels we where
-        // waiting for, master might have transmitted less
-        // channels.  Ignore.
+
+        // Update receive time to determine signal timeout.
+        lastFrameReceivedTime = millis();
     }
 }
 
