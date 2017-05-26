@@ -62,14 +62,13 @@ int dmxAddress;
 // keep track of when we last got a DMX frame
 // we'll blink the LED if we have good DMX coming in
 // we'll stop blinking the LED if we haven't seen DMX in 1 second
-unsigned long lastFrameReceivedTime = 0UL;
+volatile unsigned long lastFrameReceivedTime = 0UL;
 const unsigned long dmxTimeout = 1000UL;
 
-// We'll service the LED state to blink if we're getting good DMX.
+// Small state machine that blinks the LED if we're getting good DMX.
 bool ledOn = false;
 unsigned long lastLedTransition = 0UL;
-// Nice slow blinking for good DMX.
-const int blinkDuration = 500;
+const int blinkDuration = 500;  // Nice, slow blinking.
 
 // Make the LED blink if we have good DMX.
 void serviceLedState() {
@@ -81,13 +80,12 @@ void serviceLedState() {
     // Otherwise, possibly execute a state transition if it's been
     // a while since the last one.
     else if (lastLedTransition + blinkDuration < now) {
-        if (ledOn) {
-            digitalWrite(LED_PIN, LOW);
-        }
-        else {
-            digitalWrite(LED_PIN, HIGH);
-        }
+        // Toggle the state.
         ledOn = !ledOn;
+        // Set the LED to this new state.
+        digitalWrite(LED_PIN, ledOn);
+        // Record that we just transitioned.
+        lastLedTransition = now;
     }
 }
 
@@ -110,10 +108,10 @@ uint8_t speedFromDigit(int pin) {
 }
 
 // stored state of each motor
-MotorState motor0State = MotorState {FORWARD, 0};
-MotorState motor1State = MotorState {FORWARD, 0};
-MotorState motor2State = MotorState {FORWARD, 0};
-MotorState motor3State = MotorState {FORWARD, 0};
+volatile MotorState motor0State = MotorState {FORWARD, 0};
+volatile MotorState motor1State = MotorState {FORWARD, 0};
+volatile MotorState motor2State = MotorState {FORWARD, 0};
+volatile MotorState motor3State = MotorState {FORWARD, 0};
 
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield motorShield = Adafruit_MotorShield();
@@ -125,17 +123,20 @@ Adafruit_DCMotor *motor2 = motorShield.getMotor(3);
 Adafruit_DCMotor *motor3 = motorShield.getMotor(4);
 
 // Use a MotorState to set the state of a motor.
-void pushMotorState(Adafruit_DCMotor* motor, MotorState motorState) {
-    motor->setSpeed(motorState.speed);
-    motor->run(motorState.direction);
+void pushMotorState(Adafruit_DCMotor* motor, MotorState* motorState) {
+    motor->setSpeed(motorState->speed);
+    motor->run(motorState->direction);
 }
 
 // Push state to all of the motors.
 void pushMotorStates() {
-    pushMotorState(motor0, motor0State);
-    pushMotorState(motor1, motor1State);
-    pushMotorState(motor2, motor2State);
-    pushMotorState(motor3, motor3State);
+    // disable interrupts while we're reading the motor states
+    noInterrupts();
+    pushMotorState(motor0, &motor0State);
+    pushMotorState(motor1, &motor1State);
+    pushMotorState(motor2, &motor2State);
+    pushMotorState(motor3, &motor3State);
+    interrupts();
 }
 
 void setup() {
@@ -172,10 +173,10 @@ void setup() {
 
     pushMotorStates();
 
-    motor0 ->run(RELEASE);
-    motor1 ->run(RELEASE);
-    motor2 ->run(RELEASE);
-    motor3 ->run(RELEASE);
+    motor0->run(RELEASE);
+    motor1->run(RELEASE);
+    motor2->run(RELEASE);
+    motor3->run(RELEASE);
 
     // if we're not in standalone, configure DMX
     if (dmxAddress > 0) {
@@ -185,20 +186,18 @@ void setup() {
         // Register the interrupt handler to run on frame completion.
         dmxSlave.onReceiveComplete(handleDmxFrame);
     }
-
 }
 
 void loop() {
-    // If we're in standalone mode, read the control values.
-    // DMX mode sets the motor states in an interrupt.
+    // If we're in standalone mode, read the control values and set state.
     if (dmxAddress == -1) {
         motor0State.speed = speedFromDigit(A0);
         motor1State.speed = speedFromDigit(A1);
         motor2State.speed = speedFromDigit(A2);
         motor3State.speed = speedFromDigit(A3);
     }
+    // If we're running in DMX mode, blink the LED if we have good signal.
     else {
-        // Running in DMX mode, blink the LED if we have good signal.
         serviceLedState();
     }
     
@@ -229,9 +228,9 @@ void handleDmxFrame(unsigned short channelsReceived) {
     if (channelsReceived == DMX_CHANNEL_COUNT) {
         // Update the stored motor state.
         setMotorStateFromDmx(0, &motor0State);
-        setMotorStateFromDmx(1, &motor1State);
-        setMotorStateFromDmx(2, &motor2State);
-        setMotorStateFromDmx(3, &motor3State);
+        setMotorStateFromDmx(2, &motor1State);
+        setMotorStateFromDmx(4, &motor2State);
+        setMotorStateFromDmx(6, &motor3State);
 
         // Update receive time to determine signal timeout.
         lastFrameReceivedTime = millis();
