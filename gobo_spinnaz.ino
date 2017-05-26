@@ -1,9 +1,11 @@
 /* WE GOBO SPINNAZ, WE GOBO SPINNAZ GOBO SPINNAZ (THEY DONT STOP)
  * 
+ * The hardware controls are four 0-9 digit thumbwheels, biased with
+ * a resistor ladder and read out using an analog voltage.
  * 
  * On startup, loop until we have a valid state on the controls:
- * - first digit is zero -> run in standalone
- * - first digit is nonzero -> try to parse the last three digits as
+ * - first digit is nonzero -> run in standalone
+ * - first digit is zero -> try to parse the last three digits as
  *     a valid DMX address.  If not valid, continue looping.  If valid,
  *     start running.
  * Power cycle has to happen to change the mode or the DMX address.
