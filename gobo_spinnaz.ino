@@ -1,19 +1,19 @@
 /* WE GOBO SPINNAZ, WE GOBO SPINNAZ GOBO SPINNAZ (THEY DONT STOP)
- * 
+ *
  * The hardware controls are four 0-9 digit thumbwheels, biased with
  * a resistor ladder and read out using an analog voltage.
- * 
+ *
  * On startup, loop until we have a valid state on the controls:
  * - first digit is nonzero -> run in standalone
  * - first digit is zero -> try to parse the last three digits as
  *     a valid DMX address.  If not valid, continue looping.  If valid,
  *     start running.
  * Power cycle has to happen to change the mode or the DMX address.
- *     
+ *
  * In standalone mode, each digit dial sets the speed of one motor.
  * DMX mode: 8 channels (2 per motor), first channel is direction,
  * second is speed.
- * 
+ *
  */
 #include "Conceptinetics/Conceptinetics.h"
 #include <Wire.h>
@@ -24,15 +24,15 @@
 //
 // CTC-DRA-13-1 ISOLATED DMX-RDM SHIELD JUMPER INSTRUCTIONS
 //
-// If you are using the above mentioned shield you should 
+// If you are using the above mentioned shield you should
 // place the RXEN jumper towards G (Ground), This will turn
 // the shield into read mode without using up an IO pin
 //
-// The !EN Jumper should be either placed in the G (GROUND) 
-// position to enable the shield circuitry 
+// The !EN Jumper should be either placed in the G (GROUND)
+// position to enable the shield circuitry
 //   OR
 // if one of the pins is selected the selected pin should be
-// set to OUTPUT mode and set to LOGIC LOW in order for the 
+// set to OUTPUT mode and set to LOGIC LOW in order for the
 // shield to work
 //
 
@@ -68,6 +68,8 @@ int readDigitEntry(int digitEntryPin) {
 }
 
 // Correspondence between digit on {0..9} and motor speed for standalone.
+// Generated as the series 255*tan(x/7)/tan(9/7).
+// Roughly linear for the first 4-5 values, then curving upward.
 uint8_t standaloneValues[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
 
 // Get an 8-bit speed from reading a thumbwheel.
@@ -142,16 +144,16 @@ void setup() {
   motor1 ->run(RELEASE);
   motor2 ->run(RELEASE);
   motor3 ->run(RELEASE);
-  
+
   // if we're not in standalone, configure DMX
   if (dmxAddress > 0) {
     // Enable DMX slave interface and start listening to DMX data.
-    dmxSlave.enable();  
+    dmxSlave.enable();
     dmxSlave.setStartAddress(dmxAddress);
     // Register the interrupt handler to run on frame completion.
     dmxSlave.onReceiveComplete(handleDmxFrame);
   }
-  
+
 }
 
 void loop() {
@@ -194,7 +196,7 @@ void handleDmxFrame(unsigned short channelsReceived) {
     setMotorStateFromDmx(3, &motor3State);
   }
   else {
-    // We have received a frame but not all channels we where 
+    // We have received a frame but not all channels we where
     // waiting for, master might have transmitted less
     // channels.  Ignore.
   }
