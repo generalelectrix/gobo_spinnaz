@@ -44,8 +44,10 @@
 #define LED_PIN LED_BUILTIN
 
 // Blink the LED on and off several times with some duration of flash.
-void blink (uint8_t times, uint16_t duration) {
-    for (int i = 0; i < times; i++) {
+void blink (uint8_t times, uint16_t duration)
+{
+    for (int i = 0; i < times; i++)
+    {
         digitalWrite(LED_PIN, HIGH);
         delay(duration);
         digitalWrite(LED_PIN, LOW);
@@ -71,15 +73,18 @@ uint32_t lastLedTransition = 0ul;
 const uint16_t blinkDuration = 500;  // Nice, slow blinking.
 
 // Make the LED blink if we have good DMX.
-void serviceLedState () {
+void serviceLedState ()
+{
     uint32_t now = millis();
     // If we haven't seen a frame in a while, shut LED off.
-    if (lastFrameReceivedTime + dmxTimeout < now) {
+    if (lastFrameReceivedTime + dmxTimeout < now)
+    {
         digitalWrite(LED_PIN, LOW);
     }
     // Otherwise, possibly execute a state transition if it's been
     // a while since the last one.
-    else if (lastLedTransition + blinkDuration < now) {
+    else if (lastLedTransition + blinkDuration < now)
+    {
         // Toggle the state.
         ledOn = !ledOn;
         // Set the LED to this new state.
@@ -90,7 +95,8 @@ void serviceLedState () {
 }
 
 // Read an analog pin and interpret it as a digit in {0..9}.
-uint16_t readDigitEntry (int16_t digitEntryPin) {
+uint16_t readDigitEntry (int16_t digitEntryPin)
+{
     uint16_t value = analogRead(digitEntryPin);
     // Resistor ladder divides up 5V into 10 equal bins.
     // TODO measure outputs and make sure ranges are good
@@ -103,7 +109,8 @@ uint16_t readDigitEntry (int16_t digitEntryPin) {
 uint8_t standaloneValues[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
 
 // Get an 8-bit speed from reading a thumbwheel.
-uint8_t speedFromDigit (int16_t pin) {
+uint8_t speedFromDigit (int16_t pin)
+{
     return standaloneValues[readDigitEntry(pin)];
 }
 
@@ -123,13 +130,15 @@ Adafruit_DCMotor *motor2 = motorShield.getMotor(3);
 Adafruit_DCMotor *motor3 = motorShield.getMotor(4);
 
 // Use a MotorState to set the state of a motor.
-void pushMotorState (Adafruit_DCMotor* motor, MotorState* motorState) {
+void pushMotorState (Adafruit_DCMotor* motor, MotorState* motorState)
+{
     motor->setSpeed(motorState->speed);
     motor->run(motorState->direction);
 }
 
 // Push state to all of the motors.
-void pushMotorStates () {
+void pushMotorStates ()
+{
     // disable interrupts while we're reading the motor states
     noInterrupts();
     pushMotorState(motor0, &motor0State);
@@ -139,7 +148,8 @@ void pushMotorStates () {
     interrupts();
 }
 
-void setup () {
+void setup ()
+{
 
     pinMode(LED_PIN, OUTPUT);
 
@@ -147,8 +157,10 @@ void setup () {
     bool configured = false;
 
     while (!configured) {
+
         uint16_t select0Digit = readDigitEntry(A0);
-        if (select0Digit > 0) {
+        if (select0Digit > 0)
+        {
             // running in standalone mode, set address to -1
             dmxAddress = -1;
             // blink the LED 3 times slowly
@@ -156,13 +168,15 @@ void setup () {
             configured = true;
         }
         // not standalone, check if we have a valid DMX address
-        else {
+        else
+        {
             uint16_t readAddress =
                 (100 * readDigitEntry(A1))
                 + (10 * readDigitEntry(A2))
                 + readDigitEntry(A3);
 
-            if (readAddress > 0 && readAddress < 512) {
+            if (readAddress > 0 && readAddress < 512)
+            {
                 // valid address, set it and move on
                 dmxAddress = readAddress;
                 // blink the LED 6 times quickly
@@ -170,7 +184,8 @@ void setup () {
                 configured = true;
             }
         }
-        if (!configured) {
+        if (!configured)
+        {
             // furiously blink the LED to indicate addressing failure
             blink(50, 20);
         }
@@ -188,7 +203,8 @@ void setup () {
     motor3->run(RELEASE);
 
     // if we're not in standalone, configure DMX
-    if (dmxAddress > 0) {
+    if (dmxAddress > 0)
+    {
         // Enable DMX slave interface and start listening to DMX data.
         dmxSlave.enable();
         dmxSlave.setStartAddress(dmxAddress);
@@ -197,16 +213,19 @@ void setup () {
     }
 }
 
-void loop () {
+void loop ()
+{
     // If we're in standalone mode, read the control values and set state.
-    if (-1 == dmxAddress) {
+    if (-1 == dmxAddress)
+    {
         motor0State.speed = speedFromDigit(A0);
         motor1State.speed = speedFromDigit(A1);
         motor2State.speed = speedFromDigit(A2);
         motor3State.speed = speedFromDigit(A3);
     }
     // If we're running in DMX mode, blink the LED if we have good signal.
-    else {
+    else
+    {
         serviceLedState();
     }
 
@@ -218,12 +237,15 @@ void loop () {
 }
 
 // Given a channel offset, set the motor state from DMX values.
-void setMotorStateFromDmx (uint16_t channelOffset, MotorState* motorState) {
+void setMotorStateFromDmx (uint16_t channelOffset, MotorState* motorState)
+{
     // First channel is direction, forward if less than 127.
-    if (dmxSlave.getChannelValue(channelOffset + 1) > 127) {
+    if (dmxSlave.getChannelValue(channelOffset + 1) > 127)
+    {
         motorState->direction = BACKWARD;
     }
-    else {
+    else
+    {
         motorState->direction = FORWARD;
     }
     // Second channel is speed.
@@ -231,10 +253,12 @@ void setMotorStateFromDmx (uint16_t channelOffset, MotorState* motorState) {
 }
 
 // Interrupt handler for when the DMX interface has read a frame.
-void handleDmxFrame (uint16_t channelsReceived) {
+void handleDmxFrame (uint16_t channelsReceived)
+{
     // Possible we didn't receive all of the channels, such as a truncated DMX universe.
     // Only update state if we got all of them.
-    if (DMX_CHANNEL_COUNT == channelsReceived) {
+    if (DMX_CHANNEL_COUNT == channelsReceived)
+    {
         // Update the stored motor state.
         setMotorStateFromDmx(0, &motor0State);
         setMotorStateFromDmx(2, &motor1State);
