@@ -62,12 +62,12 @@ int16_t dmxAddress;
 // keep track of when we last got a DMX frame
 // we'll blink the LED if we have good DMX coming in
 // we'll stop blinking the LED if we haven't seen DMX in 1 second
-volatile uint32_t lastFrameReceivedTime = 0UL;
-const uint16_t dmxTimeout = 1000;
+volatile uint32_t lastFrameReceivedTime = 0ul;
+const uint16_t dmxTimeout = 1000u;
 
 // Small state machine that blinks the LED if we're getting good DMX.
 bool ledOn = false;
-uint32_t lastLedTransition = 0UL;
+uint32_t lastLedTransition = 0ul;
 const uint16_t blinkDuration = 500;  // Nice, slow blinking.
 
 // Make the LED blink if we have good DMX.
@@ -190,7 +190,7 @@ void setup () {
 
 void loop () {
     // If we're in standalone mode, read the control values and set state.
-    if (dmxAddress == -1) {
+    if (-1 == dmxAddress) {
         motor0State.speed = speedFromDigit(A0);
         motor1State.speed = speedFromDigit(A1);
         motor2State.speed = speedFromDigit(A2);
@@ -225,7 +225,7 @@ void setMotorStateFromDmx (uint16_t channelOffset, MotorState* motorState) {
 void handleDmxFrame (uint16_t channelsReceived) {
     // Possible we didn't receive all of the channels, such as a truncated DMX universe.
     // Only update state if we got all of them.
-    if (channelsReceived == DMX_CHANNEL_COUNT) {
+    if (DMX_CHANNEL_COUNT == channelsReceived) {
         // Update the stored motor state.
         setMotorStateFromDmx(0, &motor0State);
         setMotorStateFromDmx(2, &motor1State);
