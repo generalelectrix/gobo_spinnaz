@@ -144,27 +144,36 @@ void setup () {
     pinMode(LED_PIN, OUTPUT);
 
     // configure as DMX or standalone
-    while (true) {
+    bool configured = false;
+
+    while (!configured) {
         uint16_t select0Digit = readDigitEntry(A0);
         if (select0Digit > 0) {
             // running in standalone mode, set address to -1
             dmxAddress = -1;
             // blink the LED 3 times slowly
             blink(3, 500);
-            break;
+            configured = true;
         }
         // not standalone, check if we have a valid DMX address
-        uint16_t readAddress = (100 * readDigitEntry(A1)) + (10 * readDigitEntry(A2)) + readDigitEntry(A3);
-        if (readAddress > 0 && readAddress < 512) {
-            // valid address, set it and move on
-            dmxAddress = readAddress;
-            // blink the LED 6 times quickly
-            blink(6, 250);
-            break;
+        else {
+            uint16_t readAddress =
+                (100 * readDigitEntry(A1))
+                + (10 * readDigitEntry(A2))
+                + readDigitEntry(A3);
+
+            if (readAddress > 0 && readAddress < 512) {
+                // valid address, set it and move on
+                dmxAddress = readAddress;
+                // blink the LED 6 times quickly
+                blink(6, 250);
+                configured = true;
+            }
         }
-        // furiously blink the LED to indicate addressing failure
-        blink(50, 20);
-        // loop and try again
+        if (!configured) {
+            // furiously blink the LED to indicate addressing failure
+            blink(50, 20);
+        }
     }
 
     // configure the motor shield and release the motors
