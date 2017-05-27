@@ -77,13 +77,13 @@ void serviceLedState ()
 {
     uint32_t now = millis();
     // If we haven't seen a frame in a while, shut LED off.
-    if (lastFrameReceivedTime + dmxTimeout < now)
+    if ((lastFrameReceivedTime + dmxTimeout) < now)
     {
         digitalWrite(LED_PIN, LOW);
     }
     // Otherwise, possibly execute a state transition if it's been
     // a while since the last one.
-    else if (lastLedTransition + blinkDuration < now)
+    else if ((lastLedTransition + blinkDuration) < now)
     {
         // Toggle the state.
         ledOn = !ledOn;
@@ -175,7 +175,7 @@ void setup ()
                 + (10 * readDigitEntry(A2))
                 + readDigitEntry(A3);
 
-            if (readAddress > 0 && readAddress < 512)
+            if ((readAddress > 0) && (readAddress < 512))
             {
                 // valid address, set it and move on
                 dmxAddress = readAddress;
