@@ -44,7 +44,7 @@
 #define LED_PIN LED_BUILTIN
 
 // Blink the LED on and off several times with some duration of flash.
-void blink (int times, int duration) {
+void blink (uint8_t times, uint16_t duration) {
     for (int i = 0; i < times; i++) {
         digitalWrite(LED_PIN, HIGH);
         delay(duration);
@@ -57,22 +57,22 @@ void blink (int times, int duration) {
 DMX_Slave dmxSlave(DMX_CHANNEL_COUNT);
 
 // setting this to -1 runs in standalone
-int dmxAddress;
+uint16_t dmxAddress;
 
 // keep track of when we last got a DMX frame
 // we'll blink the LED if we have good DMX coming in
 // we'll stop blinking the LED if we haven't seen DMX in 1 second
-volatile unsigned long lastFrameReceivedTime = 0UL;
-const unsigned long dmxTimeout = 1000UL;
+volatile uint32_t lastFrameReceivedTime = 0UL;
+const uint16_t dmxTimeout = 1000;
 
 // Small state machine that blinks the LED if we're getting good DMX.
 bool ledOn = false;
-unsigned long lastLedTransition = 0UL;
-const int blinkDuration = 500;  // Nice, slow blinking.
+uint32_t lastLedTransition = 0UL;
+const uint16_t blinkDuration = 500;  // Nice, slow blinking.
 
 // Make the LED blink if we have good DMX.
 void serviceLedState () {
-    unsigned long now = millis();
+    uint32_t now = millis();
     // If we haven't seen a frame in a while, shut LED off.
     if (lastFrameReceivedTime + dmxTimeout < now) {
         digitalWrite(LED_PIN, LOW);
@@ -90,8 +90,8 @@ void serviceLedState () {
 }
 
 // Read an analog pin and interpret it as a digit in {0..9}.
-int readDigitEntry (int digitEntryPin) {
-    int value = analogRead(digitEntryPin);
+uint16_t readDigitEntry (int16_t digitEntryPin) {
+    uint16_t value = analogRead(digitEntryPin);
     // Resistor ladder divides up 5V into 10 equal bins.
     // TODO measure outputs and make sure ranges are good
     return max(value / 102, 9);
@@ -103,7 +103,7 @@ int readDigitEntry (int digitEntryPin) {
 uint8_t standaloneValues[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
 
 // Get an 8-bit speed from reading a thumbwheel.
-uint8_t speedFromDigit (int pin) {
+uint8_t speedFromDigit (int16_t pin) {
     return standaloneValues[readDigitEntry(pin)];
 }
 
@@ -145,7 +145,7 @@ void setup () {
 
     // configure as DMX or standalone
     while (true) {
-        int select0Digit = readDigitEntry(A0);
+        uint16_t select0Digit = readDigitEntry(A0);
         if (select0Digit > 0) {
             // running in standalone mode, set address to -1
             dmxAddress = -1;
@@ -154,7 +154,7 @@ void setup () {
             break;
         }
         // not standalone, check if we have a valid DMX address
-        int readAddress = readDigitEntry(A1) * 100 + readDigitEntry(A2) * 10 + readDigitEntry(A3);
+        uint16_t readAddress = readDigitEntry(A1) * 100 + readDigitEntry(A2) * 10 + readDigitEntry(A3);
         if (readAddress > 0 && readAddress < 512) {
             // valid address, set it and move on
             dmxAddress = readAddress;
@@ -209,7 +209,7 @@ void loop () {
 }
 
 // Given a channel offset, set the motor state from DMX values.
-void setMotorStateFromDmx (int channelOffset, MotorState* motorState) {
+void setMotorStateFromDmx (uint16_t channelOffset, MotorState* motorState) {
     // First channel is direction, forward if less than 127.
     if (dmxSlave.getChannelValue(channelOffset + 1) > 127) {
         motorState->direction = BACKWARD;
@@ -222,7 +222,7 @@ void setMotorStateFromDmx (int channelOffset, MotorState* motorState) {
 }
 
 // Interrupt handler for when the DMX interface has read a frame.
-void handleDmxFrame (unsigned short channelsReceived) {
+void handleDmxFrame (uint16_t channelsReceived) {
     // Possible we didn't receive all of the channels, such as a truncated DMX universe.
     // Only update state if we got all of them.
     if (channelsReceived == DMX_CHANNEL_COUNT) {
