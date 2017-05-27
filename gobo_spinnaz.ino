@@ -57,7 +57,7 @@ void blink (uint8_t times, uint16_t duration) {
 DMX_Slave dmxSlave(DMX_CHANNEL_COUNT);
 
 // setting this to -1 runs in standalone
-uint16_t dmxAddress;
+int16_t dmxAddress;
 
 // keep track of when we last got a DMX frame
 // we'll blink the LED if we have good DMX coming in
@@ -154,7 +154,7 @@ void setup () {
             break;
         }
         // not standalone, check if we have a valid DMX address
-        uint16_t readAddress = readDigitEntry(A1) * 100 + readDigitEntry(A2) * 10 + readDigitEntry(A3);
+        uint16_t readAddress = (100 * readDigitEntry(A1)) + (10 * readDigitEntry(A2)) + readDigitEntry(A3);
         if (readAddress > 0 && readAddress < 512) {
             // valid address, set it and move on
             dmxAddress = readAddress;
