@@ -1,3 +1,18 @@
+Resistor ladder for multiplexed decade counter switches
+http://www.oddwires.com/mechanical-decade-counters-huari-pushwheel-thumbwheel-km2-pack-of-10-with-end-caps/
+
+Cheaper than Adafruit, and since they're multiplexed for each digit, only need
+to solder four obnoxious tiny surface-mount resistors instead of ten!
+
+Switch has a common lead, then leads representing 1, 2, 4, and 8.  The digit
+on the front panel corresponds to the sum of leads connected.  We will connect a
+10K resistor across the common lead (cutting the trace), and measure voltage
+across this resistor.  We will need to choose resistor values for each lead to
+ensure the voltage level is discriminable for each state.
+
+The digit 0 corresponds to no switches connected, so the voltage will be 0.
+
+
 Resistor ladder design for decade counter switches
 https://www.adafruit.com/product/1084
 
