@@ -12,6 +12,39 @@ ensure the voltage level is discriminable for each state.
 
 The digit 0 corresponds to no switches connected, so the voltage will be 0.
 
+We don't require the full binary sense range, as the largest 4-bit word we will
+need to read is 9 (1001).  For sense resistor value Rs (assuming 10K) and 1%
+resistors:
+
+R1 = 8.06 Rs
+R2 = 4.02 Rs
+R4 = 2.0 Rs
+R8 = Rs
+
+That provides the following sense voltages as a fraction of the supply voltage:
+0: 0.0
+1: 0.11
+2: 0.199
+3: 0.272
+4: 0.333
+5: 0.384
+6: 0.428
+7: 0.466
+8: 0.5
+9: 0.529
+
+With a 10-bit ADC, we expect this to produce the following measurement values:
+0: 0
+1: 112
+2: 203
+3: 277
+4: 341
+5: 393
+6: 438
+7: 476
+8: 511
+9: 541
+
 
 Resistor ladder design for decade counter switches
 https://www.adafruit.com/product/1084
