@@ -94,13 +94,23 @@ void serviceLedState ()
     }
 }
 
+// The typical ADC value for each digit of the thumbwheel counters.
+// uint16_t digitValues = {0, 118, 192, 272, 340, 397, 432, 474, 511, 543};
+
+// Edges between bins for reading thumbwheels.
+uint16_t binEdges[10] = {50, 155, 232, 305, 368, 414, 453, 492, 527, 0xFFFF};
+
 // Read an analog pin and interpret it as a digit in {0..9}.
 uint16_t readDigitEntry (int16_t digitEntryPin)
 {
     uint16_t value = analogRead(digitEntryPin);
-    // Resistor ladder divides up 5V into 10 equal bins.
-    // TODO measure outputs and make sure ranges are good
-    return max(value / 102, 9);
+    for (uint8_t i = 0; i < 9; i++) {
+        if (value < binEdges[i]) {
+            return i;
+        }
+    }
+    // Should be unreachable.
+    return 9;
 }
 
 // Correspondence between digit on {0..9} and motor speed for standalone.
@@ -269,4 +279,3 @@ void handleDmxFrame (uint16_t channelsReceived)
         lastFrameReceivedTime = millis();
     }
 }
-
