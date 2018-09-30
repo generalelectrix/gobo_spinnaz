@@ -10,7 +10,7 @@ uint16_t binEdges[10] = {50, 155, 232, 305, 368, 414, 453, 492, 527, 0xFFFF};
 uint16_t readDigitEntry (int16_t digitEntryPin)
 {
     uint16_t value = analogRead(digitEntryPin);
-    for (uint8_t i = 0; i < 9; i++) {
+    for (uint8_t i = 0; i < 10; i++) {
         if (value < binEdges[i]) {
             return i;
         }
