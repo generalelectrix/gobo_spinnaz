@@ -160,7 +160,7 @@ void setup ()
                 + (10 * readDigitEntry(A2))
                 + readDigitEntry(A3);
 
-            if ((readAddress > 0) && (readAddress < 512))
+            if ((readAddress > 0) && (readAddress < 506))
             {
                 // valid address, set it and move on
                 dmxAddress = readAddress;
