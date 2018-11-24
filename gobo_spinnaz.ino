@@ -201,12 +201,13 @@ void setup ()
 void loop ()
 {
     // If we're in standalone mode, read the control values and set state.
+    // Run the rotators twinspin-style, with one platter rotating each way.
     if (-1 == dmxAddress)
     {
         setMotorState(motor0, speedFromDigit(A0), FORWARD);
-        setMotorState(motor1, speedFromDigit(A1), FORWARD);
+        setMotorState(motor1, speedFromDigit(A1), BACKWARD);
         setMotorState(motor2, speedFromDigit(A2), FORWARD);
-        setMotorState(motor3, speedFromDigit(A3), FORWARD);
+        setMotorState(motor3, speedFromDigit(A3), BACKWARD);
     }
     // If we're running in DMX mode, read values and update LED indicator.
     else
