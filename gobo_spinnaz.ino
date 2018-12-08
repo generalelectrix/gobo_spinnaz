@@ -11,6 +11,7 @@
 * Power cycle has to happen to change the mode or the DMX address.
 *
 * In standalone mode, each digit dial sets the speed of one motor.
+*
 * DMX mode: 8 channels (2 per motor), first channel is direction,
 * second is speed.
 *
@@ -70,17 +71,21 @@ void serviceLedState ()
     }
 }
 
+/// Analog pins used to read the four digit entry thumbwheels.
+int16_t thumbwheelPins[4] = {A0, A1, A2, A3};
+
 // The typical ADC value for each digit of the thumbwheel counters.
 // uint16_t digitValues = {0, 118, 192, 272, 340, 397, 432, 474, 511, 543};
 
 // Edges between bins for reading thumbwheels.
 uint16_t binEdges[10] = {50, 155, 232, 305, 368, 414, 453, 492, 527, 0xFFFF};
 
-// Read an analog pin and interpret it as a digit in {0..9}.
-uint16_t readDigitEntry (int16_t digitEntryPin)
+// Read thumbwheel i and interpret it as a digit in {0..9}.
+uint8_t readThumbwheel (uint8_t thumbwheel)
 {
-    uint16_t value = analogRead(digitEntryPin);
-    for (uint8_t i = 0; i < 10; i++) {
+    uint16_t value = analogRead(thumbwheelPins[thumbwheel]);
+    for (uint8_t i = 0; i < 10; i++)
+    {
         if (value < binEdges[i]) {
             return i;
         }
@@ -92,44 +97,55 @@ uint16_t readDigitEntry (int16_t digitEntryPin)
 // Correspondence between digit on {0..9} and motor speed for standalone.
 // Generated as the series 255*tan(x/7)/tan(9/7).
 // Roughly linear for the first 4-5 values, then curving upward.
-uint8_t standaloneValues[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
-
-// Get an 8-bit speed from reading a thumbwheel.
-uint8_t speedFromDigit (int16_t pin)
-{
-    return standaloneValues[readDigitEntry(pin)];
-}
+uint8_t standaloneSpeed[10] = {0, 11, 22, 34, 48, 65, 86, 116, 163, 255};
 
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield motorShield = Adafruit_MotorShield();
 
 // Four motors, motor selection is indexed from 1.
-Adafruit_DCMotor *motor0 = motorShield.getMotor(1);
-Adafruit_DCMotor *motor1 = motorShield.getMotor(2);
-Adafruit_DCMotor *motor2 = motorShield.getMotor(3);
-Adafruit_DCMotor *motor3 = motorShield.getMotor(4);
+Adafruit_DCMotor *motors[4] = {
+    motorShield.getMotor(1),
+    motorShield.getMotor(2),
+    motorShield.getMotor(3),
+    motorShield.getMotor(4),
+};
 
-// Set speed and direction for a given motor.
-void setMotorState (Adafruit_DCMotor* motor, uint8_t speed, uint8_t direction)
+// Given a motor index, set motor state by reading a thumbwheel.
+// Run in "twinspin" mode where even motors run forward and odd motors run
+// backward.
+void setMotorStateStandalone (uint8_t motorIndex)
 {
+    Adafruit_DCMotor *motor = motors[motorIndex];
+    uint8_t thumbwheelSetting = readThumbwheel(motorIndex);
+    uint8_t speed = standaloneSpeed[thumbwheelSetting];
     motor->setSpeed(speed);
-    motor->run(direction);
+    if (motorIndex % 2 == 0)
+    {
+        motor->run(FORWARD);
+    }
+    else
+    {
+        motor->run(BACKWARD);
+    }
 }
 
 // Given a channel offset, set motor state from DMX values.
 void setMotorStateFromDmx (Adafruit_DCMotor* motor, uint16_t channelOffset)
 {
     uint16_t startChannel = dmxAddress + channelOffset;
-    // Speed on second channel.
+
+    bool forward = DMXSerial.read(startChannel) < 128;
     uint8_t speed = DMXSerial.read(startChannel + 1);
+    motor->setSpeed(speed);
+
     // First channel is direction, forward if less than 127.
-    if (DMXSerial.read(startChannel) < 128)
+    if (forward)
     {
-        setMotorState(motor, speed, FORWARD);
+        motor->run(FORWARD);
     }
     else
     {
-        setMotorState(motor, speed, BACKWARD);
+        motor->run(BACKWARD);
     }
 }
 
@@ -143,8 +159,7 @@ void setup ()
 
     while (!configured) {
 
-        uint16_t select0Digit = readDigitEntry(A0);
-        if (select0Digit > 0)
+        if (readThumbwheel(0) > 0)
         {
             // running in standalone mode, set address to -1
             dmxAddress = -1;
@@ -156,66 +171,56 @@ void setup ()
         else
         {
             uint16_t readAddress =
-                (100 * readDigitEntry(A1))
-                + (10 * readDigitEntry(A2))
-                + readDigitEntry(A3);
+                (100 * readThumbwheel(1))
+                + (10 * readThumbwheel(2))
+                + readThumbwheel(3);
 
             if ((readAddress > 0) && (readAddress < 506))
             {
-                // valid address, set it and move on
                 dmxAddress = readAddress;
-                // blink the LED 6 times quickly
+
+                // Configure DMX receiver.
+                DMXSerial.maxChannel(512);
+                DMXSerial.init(DMXReceiver);
+
+                // Blink the LED 6 times quickly to indicate DMX mode success.
                 blink(6, 250);
                 configured = true;
             }
         }
         if (!configured)
         {
-            // furiously blink the LED to indicate addressing failure
-            blink(50, 20);
+            // Furiously blink the LED to indicate addressing failure.
+            blink(10, 20);
         }
     }
 
-    // configure the motor shield and release the motors
-    motorShield.begin();  // create with the default frequency 1.6KHz
-    //motorShield.begin(1000);  // OR with a different frequency, say 1KHz
+    motorShield.begin();
 
-    setMotorState(motor0, 0, FORWARD);
-    setMotorState(motor1, 0, FORWARD);
-    setMotorState(motor2, 0, FORWARD);
-    setMotorState(motor3, 0, FORWARD);
-
-    motor0->run(RELEASE);
-    motor1->run(RELEASE);
-    motor2->run(RELEASE);
-    motor3->run(RELEASE);
-
-    // if we're not in standalone, configure DMX
-    if (dmxAddress > 0)
+    for (uint8_t i = 0; i < 4; i++)
     {
-        DMXSerial.maxChannel(512);
-        DMXSerial.init(DMXReceiver);
+        Adafruit_DCMotor *motor = motors[i];
+        motor->setSpeed(0);
     }
 }
 
 void loop ()
 {
-    // If we're in standalone mode, read the control values and set state.
-    // Run the rotators twinspin-style, with one platter rotating each way.
+    // If we're in standalone mode, read new control values and set state for
+    // each motor.
     if (-1 == dmxAddress)
     {
-        setMotorState(motor0, speedFromDigit(A0), FORWARD);
-        setMotorState(motor1, speedFromDigit(A1), BACKWARD);
-        setMotorState(motor2, speedFromDigit(A2), FORWARD);
-        setMotorState(motor3, speedFromDigit(A3), BACKWARD);
+        for (uint8_t i = 0; i < 4; i++)
+        {
+            setMotorStateStandalone(i);
+        }
     }
     // If we're running in DMX mode, read values and update LED indicator.
     else
     {
-        setMotorStateFromDmx(motor0, 0);
-        setMotorStateFromDmx(motor1, 2);
-        setMotorStateFromDmx(motor2, 4);
-        setMotorStateFromDmx(motor3, 6);
+        for (uint8_t i = 0; i < 4; i++) {
+            setMotorStateFromDmx(motors[i], i*2);
+        }
         serviceLedState();
     }
 
